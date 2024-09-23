@@ -26,7 +26,6 @@ app.get('/slots', async (req: Request, res: Response, next) => {
 // book available slots
 app.post('/book', async (req: Request, res: Response, next) => {
 	try {
-		console.log(req.body);
 		await appointmentController.bookSlot(req, res);
 	} catch (error) {
 		next(error);

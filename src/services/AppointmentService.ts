@@ -1,6 +1,7 @@
 import { Appointment } from "../entities/Appointment";
 import { AppDataSource } from "../lib/database";
 import { AppointmentRepository } from "../repositories/AppointmentRepository";
+import { format } from 'date-fns';
 
 class AppointmentService {
     
@@ -15,24 +16,37 @@ class AppointmentService {
         const times = [];
         const slots = [];
 
+        // create array of time from start to end hour
         for (let hour = this.startHour; hour < this.endHour; hour++) {
-            times.push(`${hour.toString().padStart(2, '0')}:00`);
-            times.push(`${hour.toString().padStart(2, '0')}:30`);
+            // slots duration
+            for (let minutes = 0; minutes < 60; minutes += this.duration) {
+                times.push(`${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
+            }
         }
 
         for (const time of times) {
-            let existingSlot = await this.repository.findOne(date, time);
+            // check if exist
+            const existingAppoinment = await this.repository.findOne(date, time);
 
-            if (!existingSlot) {
-                const appointment = new Appointment();
+            // prepare data
+            const appointment = new Appointment();
+
+            // on the fly data/slots if not exists
+            if (!existingAppoinment) {
                 appointment.date = date;
                 appointment.time = time;
                 appointment.availableSlots = this.slotAvailable;
 
-                existingSlot = await this.repository.save(appointment);
-            }
+                await slots.push(appointment);
+            } else {
+                // existing slots from db 
+                appointment.date = format(existingAppoinment.date, 'yy-mm-dd');
+                appointment.time = existingAppoinment.time.substring(0, 5);
 
-            await slots.push(existingSlot);
+                if (appointment.availableSlots > 0) {
+                    await slots.push(appointment);
+                }
+            }
         }
 
         return slots;
@@ -43,9 +57,24 @@ class AppointmentService {
             let result;
             
             await AppDataSource.transaction(async (manager) => {
+                // check if slot exist, lock database transaction
                 const slot = await this.repository.findSlotWithLock(manager, date, time);
+                
+                // add timeout for testing race condition
+                await new Promise(resolve => setTimeout(resolve, 3000));
 
-                if (!slot) throw new Error('Slot not found');
+                // if slot don't exist, then record
+                if (!slot) {
+                    const appointment = new Appointment();
+                    appointment.date = date;
+                    appointment.time = time;
+                    appointment.availableSlots = this.slotAvailable - 1;
+
+                    result = await this.repository.bookSlot(manager, appointment);
+
+                    return result;
+                }
+
                 if (slot.availableSlots === 0) throw new Error('Slot is already booked');
 
                 slot.availableSlots -= 1;

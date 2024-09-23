@@ -39,11 +39,6 @@ class AppointmentRepository {
     public async bookSlot (manager: EntityManager, slot: Appointment) {
         return manager.save(Appointment, slot);
     }
-
-    // this one for data initialize
-    public async save (slot: Appointment) {
-        return this.AppointmentEntity.save(slot);
-    }
 }
 
 export { AppointmentRepository };

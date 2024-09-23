@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { AppointmentService } from "../services/AppointmentService";
+import { checkWorkingDaysAndTimes } from "../lib/dateConfig";
 
 class AppointmentController {
 
@@ -27,6 +28,12 @@ class AppointmentController {
 
     public async bookSlot (req: Request, res: Response) {
         const { date, time } = req.body;
+
+        // validate working days and hours
+        const operationalDayTime = await checkWorkingDaysAndTimes(date, time);
+        if (operationalDayTime === false) {
+            return res.status(400).json({ message: 'No slot available outside operational hours and days'});
+        }
 
         try {
             await this.service.bookSlot(date, time);
