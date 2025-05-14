@@ -22,7 +22,7 @@ class AppointmentController {
                 total: slots.length,
             })
         } catch (error) {
-            return res.status(400).json({ message: error.message});
+            return res.status(500).json({ message: error.message});
         }
     }
 
@@ -32,7 +32,7 @@ class AppointmentController {
         // validate working days and hours
         const operationalDayTime = await checkWorkingDaysAndTimes(date, time);
         if (operationalDayTime === false) {
-            return res.status(400).json({ message: 'No slot available outside operational hours and days'});
+            return res.status(500).json({ message: 'No slot available outside operational hours and days'});
         }
 
         try {
@@ -41,7 +41,7 @@ class AppointmentController {
                 message: 'Slot Booked',
             })
         } catch (error) {
-            return res.status(400).json({ message: error.message});
+            return res.status(500).json({ message: error.message});
         }
     }
 }
